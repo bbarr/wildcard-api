@@ -6,7 +6,10 @@ module.exports = MiddlewareFactory;
 
 function MiddlewareFactory(ServerAdapter, opts) {
   return (
-    (contextGetter, {__INTERNAL__wildcardApiHolder}={}) => {
+    (wrappersOrContextGetter, {__INTERNAL__wildcardApiHolder}={}) => {
+      let { contextGetter, responseHandler } = typeof wrappersOrContextGetter === 'function' ?
+        { contextGetter: wrappersOrContextGetter } :
+        wrappersOrContextGetter
       return (
         ServerAdapter(
           [ async (requestObject, {requestProps}) => {
@@ -34,6 +37,14 @@ function MiddlewareFactory(ServerAdapter, opts) {
               );
             }
             const responseProps = await wildcardApi.getApiHttpResponse(requestProps, context);
+            let responseHandlerValue
+            if( responseHandler ){
+              responseHandlerValue = await responseHandler(responseProps)
+              assert.usage(
+                typeof responseHandlerValue === 'undefined',
+                'Your response handler should not return anything'
+              );
+            }
             return responseProps;
           } ],
           opts,
